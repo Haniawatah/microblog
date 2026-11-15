@@ -1,0 +1,32 @@
+services:
+  mysql:
+    image: mysql:8.0
+    # PyMySQL needs a the native password plugin to log in without extra packages
+    command: --default-authentication-plugin=mysql_native_password
+    environment:
+      MYSQL_RANDOM_ROOT_PASSWORD: "yes"
+      MYSQL_DATABASE: microblog
+      MYSQL_USER: microblog
+      MYSQL_PASSWORD: microblog
+
+  prod:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile_prod
+      args:
+        APP_VERSION: ${APP_VERSION:-0.0.0}
+    ports:
+      - "5000:5000"
+    environment:
+      SECRET_KEY: change-this-secret-key
+      DATABASE_URL: mysql+pymysql://microblog:microblog@mysql:3306/microblog
+    depends_on:
+      - mysql
+
+  test:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile_test
+    volumes:
+      - ./app:/home/microblog/app
+      - ./tests:/home/microblog/tests

@@ -1,0 +1,38 @@
+name: Continuous Delivery
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+jobs:
+  # Reuse the CI workflow, the image is only built if the tests pass
+  test:
+    uses: ./.github/workflows/ci.yml
+    secrets: inherit
+
+  build:
+    needs: test
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Get the version from the tag
+        id: version
+        run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Login to DockerHub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_PASSWORD }}
+
+      - name: Build and push the image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/Dockerfile_prod
+          push: true
+          build-args: |
+            APP_VERSION=${{ steps.version.outputs.version }}
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/microblog:${{ steps.version.outputs.version }}
